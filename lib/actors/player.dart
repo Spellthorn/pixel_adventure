@@ -4,18 +4,18 @@ import 'package:flame/components.dart';
 
 class Player extends SpriteAnimationComponent with HasGameRef {
   final double _frameRate = 0.05;
-  // All our Sprite Animations
+
+  // Animation for player's idle state
   late final SpriteAnimation _idleAnimation;
 
   @override
   FutureOr<void> onLoad() {
-    // Load all Player animations
-    _onLoadAnimations();
+    _onLoadAnimations(); // Load all Player animations
 
-    //Position player in center of screen
+    // Position player in the center of the screen
     position = gameRef.size / 2 - size / 2;
 
-    // return the rest onload events
+    // Invoke parent class's onLoad() method to process any remaining events
     return super.onLoad();
   }
 
@@ -30,7 +30,7 @@ class Player extends SpriteAnimationComponent with HasGameRef {
       ),
     );
 
-    // Set our current animation to idle animation
+    // Set the current animation to idle animation
     animation = _idleAnimation;
   }
 }
