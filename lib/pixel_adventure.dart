@@ -7,13 +7,14 @@ class PixelAdventure extends FlameGame {
   final Player _player = Player();
   @override
   FutureOr<void> onLoad() async {
-    // Grab and cache all images
+    // Load and cache all images for efficient access during gameplay
     await images.loadAllImages();
 
-    // Add player to the game
+    // Add the player character to the game scene
     add(_player);
 
-    // Return the rest onload events
+    // Retrieve and return the remaining onload events by invoking the parent class's onLoad() method.
+    // This ensures that any additional onload events registered by the parent class are properly processed.
     return super.onLoad();
   }
 }
