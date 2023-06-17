@@ -13,6 +13,10 @@ void main() {
   Flame.device.setLandscape();
 
   // Create an instance of the Pixel Adventure game
+  WidgetsFlutterBinding.ensureInitialized();
+  Flame.device.fullScreen();
+  Flame.device.setLandscape();
+
   PixelAdventure game = PixelAdventure();
 
   // Run the game as a Flutter app using the GameWidget
