@@ -3,21 +3,39 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "Level-01.tmx",
     "expandedProjectPaths": [
+        "."
     ],
+    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
+        "Level-01.tmx": {
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 2.159765625,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 320.1736299511666,
+                "y": 181.96418882257188
+            }
+        },
+        "Pixel Adventure.tsx": {
+            "scaleInDock": 1
+        }
     },
-    "last.imagePath": "C:/Users/Spellthorn/Desktop/pa-versions/pixel_adventure/assets/images/Terrain",
+    "last.imagePath": "C:/Users/Spellthorn/Desktop/pixel_adventure/assets/images/Terrain",
     "map.height": 23,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "map.width": 40,
     "openFiles": [
+        "Level-01.tmx"
     ],
     "project": "Pixel Adventure.tiled-project",
     "recentFiles": [
+        "Level-01.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
