@@ -11,12 +11,9 @@ class Fruit extends SpriteAnimationComponent
   final String fruit;
   Fruit({
     this.fruit = 'Apple',
-    position,
-    size,
-  }) : super(
-          position: position,
-          size: size,
-        );
+    super.position,
+    super.size,
+  });
 
   final double stepTime = 0.05;
   final hitbox = CustomHitbox(

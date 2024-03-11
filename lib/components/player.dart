@@ -27,9 +27,9 @@ class Player extends SpriteAnimationGroupComponent
     with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   String character;
   Player({
-    position,
+    super.position,
     this.character = 'Ninja Frog',
-  }) : super(position: position);
+  });
 
   final double stepTime = 0.05;
   late final SpriteAnimation idleAnimation;
@@ -95,7 +95,7 @@ class Player extends SpriteAnimationGroupComponent
   }
 
   @override
-  bool onKeyEvent(RawKeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+  bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
     horizontalMovement = 0;
     final isLeftKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyA) ||
         keysPressed.contains(LogicalKeyboardKey.arrowLeft);
@@ -107,7 +107,8 @@ class Player extends SpriteAnimationGroupComponent
 
     hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
 
-    return super.onKeyEvent(event, keysPressed);
+    // Return false to indicate that we have handled the key event.
+    return false;
   }
 
   @override
