@@ -23,7 +23,7 @@ enum PlayerState {
   disappearing
 }
 
-class Player extends SpriteAnimationGroupComponent
+class Player extends SpriteAnimationGroupComponent<PlayerState>
     with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   String character;
   Player({
@@ -32,13 +32,6 @@ class Player extends SpriteAnimationGroupComponent
   }) : super(position: position);
 
   final double stepTime = 0.05;
-  late final SpriteAnimation idleAnimation;
-  late final SpriteAnimation runningAnimation;
-  late final SpriteAnimation jumpingAnimation;
-  late final SpriteAnimation fallingAnimation;
-  late final SpriteAnimation hitAnimation;
-  late final SpriteAnimation appearingAnimation;
-  late final SpriteAnimation disappearingAnimation;
 
   final double _gravity = 9.8;
   final double _jumpForce = 260;
@@ -123,23 +116,15 @@ class Player extends SpriteAnimationGroupComponent
   }
 
   void _loadAllAnimations() {
-    idleAnimation = _spriteAnimation('Idle', 11);
-    runningAnimation = _spriteAnimation('Run', 12);
-    jumpingAnimation = _spriteAnimation('Jump', 1);
-    fallingAnimation = _spriteAnimation('Fall', 1);
-    hitAnimation = _spriteAnimation('Hit', 7)..loop = false;
-    appearingAnimation = _specialSpriteAnimation('Appearing', 7);
-    disappearingAnimation = _specialSpriteAnimation('Desappearing', 7);
-
     // List of all animations
     animations = {
-      PlayerState.idle: idleAnimation,
-      PlayerState.running: runningAnimation,
-      PlayerState.jumping: jumpingAnimation,
-      PlayerState.falling: fallingAnimation,
-      PlayerState.hit: hitAnimation,
-      PlayerState.appearing: appearingAnimation,
-      PlayerState.disappearing: disappearingAnimation,
+      PlayerState.idle: _spriteAnimation('Idle', 11),
+      PlayerState.running: _spriteAnimation('Run', 12),
+      PlayerState.jumping: _spriteAnimation('Jump', 1),
+      PlayerState.falling: _spriteAnimation('Fall', 1),
+      PlayerState.hit: _spriteAnimation('Hit', 7)..loop = false,
+      PlayerState.appearing: _specialSpriteAnimation('Appearing', 7),
+      PlayerState.disappearing: _specialSpriteAnimation('Desappearing', 7),
     };
 
     // Set current animation

@@ -9,7 +9,7 @@ import 'package:pixel_adventure/pixel_adventure.dart';
 
 enum State { idle, run, hit }
 
-class Chicken extends SpriteAnimationGroupComponent
+class Chicken extends SpriteAnimationGroupComponent<State>
     with HasGameRef<PixelAdventure>, CollisionCallbacks {
   final double offNeg;
   final double offPos;
@@ -34,9 +34,6 @@ class Chicken extends SpriteAnimationGroupComponent
   bool gotStomped = false;
 
   late final Player player;
-  late final SpriteAnimation _idleAnimation;
-  late final SpriteAnimation _runAnimation;
-  late final SpriteAnimation _hitAnimation;
 
   @override
   FutureOr<void> onLoad() {
@@ -65,14 +62,10 @@ class Chicken extends SpriteAnimationGroupComponent
   }
 
   void _loadAllAnimations() {
-    _idleAnimation = _spriteAnimation('Idle', 13);
-    _runAnimation = _spriteAnimation('Run', 14);
-    _hitAnimation = _spriteAnimation('Hit', 15)..loop = false;
-
     animations = {
-      State.idle: _idleAnimation,
-      State.run: _runAnimation,
-      State.hit: _hitAnimation,
+      State.idle: _spriteAnimation('Idle', 13),
+      State.run: _spriteAnimation('Run', 14),
+      State.hit: _spriteAnimation('Hit', 15)..loop = false,
     };
 
     current = State.idle;
