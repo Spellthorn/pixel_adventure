@@ -37,6 +37,8 @@ dependencies:
   flame: ^1.8.2
   flame_tiled: ^1.11.0
   flame_audio: ^2.0.5
+  nes_ui: ^0.20.0
+  go_router: ^14.1.2
 
 dev_dependencies:
   flutter_test:

@@ -4,14 +4,16 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/services.dart';
-import 'package:pixel_adventure/components/checkpoint.dart';
-import 'package:pixel_adventure/components/chicken.dart';
-import 'package:pixel_adventure/components/collision_block.dart';
-import 'package:pixel_adventure/components/custom_hitbox.dart';
-import 'package:pixel_adventure/components/fruit.dart';
-import 'package:pixel_adventure/components/saw.dart';
-import 'package:pixel_adventure/components/utils.dart';
-import 'package:pixel_adventure/pixel_adventure.dart';
+import 'package:pixel_adventure/characters/playable_character.dart';
+import 'package:pixel_adventure/characters/traits/can_jump.dart';
+import 'package:pixel_adventure/collectables/checkpoint.dart';
+import 'package:pixel_adventure/characters/chicken.dart';
+import 'package:pixel_adventure/collectables/fruit.dart';
+import 'package:pixel_adventure/obstacles/saw.dart';
+import 'package:pixel_adventure/games/pixel_adventure.dart';
+import 'package:pixel_adventure/utils/collision_block.dart';
+import 'package:pixel_adventure/utils/custom_hitbox.dart';
+import 'package:pixel_adventure/utils/utils.dart';
 
 enum PlayerState {
   idle,
@@ -23,8 +25,7 @@ enum PlayerState {
   disappearing
 }
 
-class Player extends SpriteAnimationGroupComponent
-    with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
+class Player extends PlayableCharacter with CanJump {
   String character;
   Player({
     position,
@@ -41,14 +42,12 @@ class Player extends SpriteAnimationGroupComponent
   late final SpriteAnimation disappearingAnimation;
 
   final double _gravity = 9.8;
-  final double _jumpForce = 260;
   final double _terminalVelocity = 300;
   double horizontalMovement = 0;
   double moveSpeed = 100;
   Vector2 startingPosition = Vector2.zero();
   Vector2 velocity = Vector2.zero();
   bool isOnGround = false;
-  bool hasJumped = false;
   bool gotHit = false;
   bool reachedCheckpoint = false;
   List<CollisionBlock> collisionBlocks = [];
@@ -105,7 +104,9 @@ class Player extends SpriteAnimationGroupComponent
     horizontalMovement += isLeftKeyPressed ? -1 : 0;
     horizontalMovement += isRightKeyPressed ? 1 : 0;
 
-    hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
+    if (keysPressed.contains(LogicalKeyboardKey.space)) {
+      jump();
+    }
 
     return super.onKeyEvent(event, keysPressed);
   }
@@ -191,20 +192,9 @@ class Player extends SpriteAnimationGroupComponent
   }
 
   void _updatePlayerMovement(double dt) {
-    if (hasJumped && isOnGround) _playerJump(dt);
-
-    // if (velocity.y > _gravity) isOnGround = false; // optional
-
+    checkShouldJump(dt);
     velocity.x = horizontalMovement * moveSpeed;
     position.x += velocity.x * dt;
-  }
-
-  void _playerJump(double dt) {
-    if (game.playSounds) FlameAudio.play('jump.wav', volume: game.soundVolume);
-    velocity.y = -_jumpForce;
-    position.y += velocity.y * dt;
-    isOnGround = false;
-    hasJumped = false;
   }
 
   void _checkHorizontalCollisions() {
@@ -228,7 +218,7 @@ class Player extends SpriteAnimationGroupComponent
 
   void _applyGravity(double dt) {
     velocity.y += _gravity;
-    velocity.y = velocity.y.clamp(-_jumpForce, _terminalVelocity);
+    velocity.y = velocity.y.clamp(-jumpForce, _terminalVelocity);
     position.y += velocity.y * dt;
   }
 
@@ -236,6 +226,7 @@ class Player extends SpriteAnimationGroupComponent
     for (final block in collisionBlocks) {
       if (block.isPlatform) {
         if (checkCollision(this, block)) {
+          resetJumps();
           if (velocity.y > 0) {
             velocity.y = 0;
             position.y = block.y - hitbox.height - hitbox.offsetY;
@@ -245,6 +236,7 @@ class Player extends SpriteAnimationGroupComponent
         }
       } else {
         if (checkCollision(this, block)) {
+          resetJumps();
           if (velocity.y > 0) {
             velocity.y = 0;
             position.y = block.y - hitbox.height - hitbox.offsetY;
@@ -301,8 +293,6 @@ class Player extends SpriteAnimationGroupComponent
     reachedCheckpoint = false;
     position = Vector2.all(-640);
 
-    const waitToChangeDuration = Duration(seconds: 3);
-    Future.delayed(waitToChangeDuration, () => game.loadNextLevel());
   }
 
   void collidedwithEnemy() {

@@ -1,13 +1,13 @@
 import 'dart:async';
-
+import 'dart:io';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
 import 'package:flutter/painting.dart';
-import 'package:pixel_adventure/components/jump_button.dart';
-import 'package:pixel_adventure/components/player.dart';
-import 'package:pixel_adventure/components/level.dart';
+import 'package:pixel_adventure/buttons/jump_button.dart';
+import 'package:pixel_adventure/characters/player.dart';
+import 'package:pixel_adventure/levels/level.dart';
 
 class PixelAdventure extends FlameGame
     with
@@ -18,20 +18,22 @@ class PixelAdventure extends FlameGame
   @override
   Color backgroundColor() => const Color(0xFF211F30);
   late CameraComponent cam;
-  Player player = Player(character: 'Mask Dude');
+  late final Player player;
   late JoystickComponent joystick;
-  bool showControls = false;
+  Level world;
+  bool showControls = Platform.isIOS || Platform.isAndroid;
   bool playSounds = true;
   double soundVolume = 1.0;
-  List<String> levelNames = ['Level-01', 'Level-01'];
   int currentLevelIndex = 0;
+
+  PixelAdventure({required this.world, required this.player});
 
   @override
   FutureOr<void> onLoad() async {
     // Load all images into cache
     await images.loadAllImages();
-
-    _loadLevel();
+    add(world);
+    _addCamera();
 
     if (showControls) {
       addJoystick();
@@ -86,34 +88,13 @@ class PixelAdventure extends FlameGame
     }
   }
 
-  void loadNextLevel() {
-    removeWhere((component) => component is Level);
-
-    if (currentLevelIndex < levelNames.length - 1) {
-      currentLevelIndex++;
-      _loadLevel();
-    } else {
-      // no more levels
-      currentLevelIndex = 0;
-      _loadLevel();
-    }
-  }
-
-  void _loadLevel() {
-    Future.delayed(const Duration(seconds: 1), () {
-      Level world = Level(
-        player: player,
-        levelName: levelNames[currentLevelIndex],
-      );
-
+  void _addCamera() {
       cam = CameraComponent.withFixedResolution(
         world: world,
         width: 640,
         height: 360,
       );
       cam.viewfinder.anchor = Anchor.topLeft;
-
-      addAll([cam, world]);
-    });
-  }
+      add(cam);
+    }
 }
