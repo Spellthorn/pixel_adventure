@@ -6,8 +6,7 @@ import 'package:pixel_adventure/pixel_adventure.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Flame.device.fullScreen();
-  await Flame.device.setLandscape();
+  await Future.wait([Flame.device.fullScreen(), Flame.device.setLandscape()]);
 
   PixelAdventure game = PixelAdventure();
   runApp(
