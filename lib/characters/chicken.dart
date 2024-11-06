@@ -1,18 +1,18 @@
 import 'dart:async';
 import 'dart:ui';
-
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame_audio/flame_audio.dart';
-import 'package:pixel_adventure/components/player.dart';
-import 'package:pixel_adventure/pixel_adventure.dart';
+import 'package:pixel_adventure/characters/npc_character.dart';
+import 'package:pixel_adventure/characters/player.dart';
+import 'package:pixel_adventure/games/map_exploration.dart';
 
 enum State { idle, run, hit }
 
-class Chicken extends SpriteAnimationGroupComponent
-    with HasGameRef<PixelAdventure>, CollisionCallbacks {
+class Chicken extends NpcCharacter {
   final double offNeg;
   final double offPos;
+  
   Chicken({
     super.position,
     super.size,

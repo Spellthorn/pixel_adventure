@@ -1,17 +1,22 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/services.dart';
-import 'package:pixel_adventure/components/checkpoint.dart';
-import 'package:pixel_adventure/components/chicken.dart';
-import 'package:pixel_adventure/components/collision_block.dart';
-import 'package:pixel_adventure/components/custom_hitbox.dart';
-import 'package:pixel_adventure/components/fruit.dart';
-import 'package:pixel_adventure/components/saw.dart';
-import 'package:pixel_adventure/components/utils.dart';
-import 'package:pixel_adventure/pixel_adventure.dart';
+import 'package:flutter/widgets.dart';
+import 'package:pixel_adventure/characters/playable_character.dart';
+import 'package:pixel_adventure/characters/traits/can_jump.dart';
+import 'package:pixel_adventure/characters/traits/can_move_vertically.dart';
+import 'package:pixel_adventure/characters/traits/can_move_horizontally.dart';
+import 'package:pixel_adventure/collectables/checkpoint.dart';
+import 'package:pixel_adventure/characters/chicken.dart';
+import 'package:pixel_adventure/collectables/fruit.dart';
+import 'package:pixel_adventure/obstacles/saw.dart';
+import 'package:pixel_adventure/utils/collision_block.dart';
+import 'package:pixel_adventure/utils/custom_hitbox.dart';
+import 'package:pixel_adventure/utils/utils.dart';
 
 enum PlayerState {
   idle,
@@ -23,13 +28,23 @@ enum PlayerState {
   disappearing
 }
 
-class Player extends SpriteAnimationGroupComponent
-    with HasGameRef<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
+enum CollisionDirection {
+  fromTop,
+  fromBottom,
+  fromRight,
+  fromLeft
+}
+
+class Player extends PlayableCharacter
+    with CanJump, CanMoveHorizontally, CanMoveVertically {
   String character;
+
   Player({
     position,
     this.character = 'Ninja Frog',
   }) : super(position: position);
+
+  factory Player.byName(String playerName) => Player(character: playerName);
 
   final double stepTime = 0.05;
   late final SpriteAnimation idleAnimation;
@@ -40,18 +55,11 @@ class Player extends SpriteAnimationGroupComponent
   late final SpriteAnimation appearingAnimation;
   late final SpriteAnimation disappearingAnimation;
 
-  final double _gravity = 9.8;
-  final double _jumpForce = 260;
-  final double _terminalVelocity = 300;
-  double horizontalMovement = 0;
-  double moveSpeed = 100;
+  late double horizontalMargin;
+  late double verticalMargin;
   Vector2 startingPosition = Vector2.zero();
-  Vector2 velocity = Vector2.zero();
-  bool isOnGround = false;
-  bool hasJumped = false;
   bool gotHit = false;
   bool reachedCheckpoint = false;
-  List<CollisionBlock> collisionBlocks = [];
   CustomHitbox hitbox = CustomHitbox(
     offsetX: 10,
     offsetY: 4,
@@ -61,10 +69,12 @@ class Player extends SpriteAnimationGroupComponent
   double fixedDeltaTime = 1 / 60;
   double accumulatedTime = 0;
 
+  double get playerRealX => isFlippedHorizontally ? x - width : x;
+
   @override
   FutureOr<void> onLoad() {
     _loadAllAnimations();
-    // debugMode = true;
+    debugMode = true;
 
     startingPosition = Vector2(position.x, position.y);
 
@@ -72,20 +82,24 @@ class Player extends SpriteAnimationGroupComponent
       position: Vector2(hitbox.offsetX, hitbox.offsetY),
       size: Vector2(hitbox.width, hitbox.height),
     ));
+
+    horizontalMargin = width / 2;
+    verticalMargin = height / 2;
     return super.onLoad();
   }
 
   @override
   void update(double dt) {
+    // todo check whether it's necessary to use accumulatedTIme and fixedDeltaTime
     accumulatedTime += dt;
 
     while (accumulatedTime >= fixedDeltaTime) {
       if (!gotHit && !reachedCheckpoint) {
         _updatePlayerState();
-        _updatePlayerMovement(fixedDeltaTime);
-        _checkHorizontalCollisions();
-        _applyGravity(fixedDeltaTime);
-        _checkVerticalCollisions();
+        updateHorizontalPosition(dt);
+        checkShouldJump(dt);
+        applyGravity(fixedDeltaTime);
+        updateVerticalPosition(dt);
       }
 
       accumulatedTime -= fixedDeltaTime;
@@ -96,16 +110,23 @@ class Player extends SpriteAnimationGroupComponent
 
   @override
   bool onKeyEvent(RawKeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    horizontalMovement = 0;
+    resetHorizontalMove();
     final isLeftKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyA) ||
         keysPressed.contains(LogicalKeyboardKey.arrowLeft);
     final isRightKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyD) ||
         keysPressed.contains(LogicalKeyboardKey.arrowRight);
 
-    horizontalMovement += isLeftKeyPressed ? -1 : 0;
-    horizontalMovement += isRightKeyPressed ? 1 : 0;
+    if (isLeftKeyPressed && isRightKeyPressed) {
+      resetHorizontalMove();
+    } else if (isLeftKeyPressed) {
+      moveLeft();
+    } else if (isRightKeyPressed) {
+      moveRight();
+    }
 
-    hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
+    if (keysPressed.contains(LogicalKeyboardKey.space)) {
+      jump();
+    }
 
     return super.onKeyEvent(event, keysPressed);
   }
@@ -113,6 +134,32 @@ class Player extends SpriteAnimationGroupComponent
   @override
   void onCollisionStart(
       Set<Vector2> intersectionPoints, PositionComponent other) {
+    //etectCollisionDirection(other);
+    // here should be other collision setting logic, as the direction should be
+    // calculated from angle between poitns, and new collidable should be set,
+    // no matter if there is another collidable already set! And also - isGoingLeft etc.
+    // is not the best way to check from which direction is set
+
+    // here should be logic not to set the same object for floor and right
+    //or left collidable
+    detectCollisionDirection(other, intersectionPoints.first);
+    if (other is CollisionBlock) {
+      if ((isFalling || isIdle)) {
+        resetJumps();
+        resetVerticalMovement();
+        collidableFromBottom = other;
+      } else if (isJumping) {
+        resetVerticalMovement();
+        collidableFromTop = other;
+      }
+
+      if (isGoingRight) {
+        collidableFromRight = other;
+      } else if (isGoingLeft) {
+        collidableFromLeft = other;
+      }
+    }
+
     if (!reachedCheckpoint) {
       if (other is Fruit) other.collidedWithPlayer();
       if (other is Saw) _respawn();
@@ -120,6 +167,37 @@ class Player extends SpriteAnimationGroupComponent
       if (other is Checkpoint) _reachedCheckpoint();
     }
     super.onCollisionStart(intersectionPoints, other);
+  }
+
+
+  @override
+  void onCollisionEnd(PositionComponent other) {
+    debugPrint('Collision end with: ${other.runtimeType}');
+    debugPrint('loading: ${this.isLoading}, mounting: ${this.isMounting}');
+    // todo - check from which direction colision ended
+    // the same block can be set as 2 collidables - wrong!!!
+    // not tak bo on collision end podaje blok ktory jest ustawiony na bottom i left!!!
+   // kurde mam! wykrywanie kolizji - przeciez to bedzie wektor od centrum gracza do intersection point
+    //i mozna bedize obliczyc kat miedzy podłoga a
+    // albo jeszcze prosciej sprawdzac intersection point gdzie sie znajduje wzgledem centrum gracza
+    // i na tej podstawie okreslac skad kolizja
+    // inter x, y < center - od gory
+    // inter x < center a y > center - od lewej i jakos tak to bedzie
+    if (other is CollisionBlock) {
+      if (identical(other, collidableFromLeft)) {
+        collidableFromLeft = null;
+      }
+      else if (identical(other, collidableFromRight)) {
+        collidableFromRight = null;
+      }
+      else if (identical(other, collidableFromBottom)) {
+        collidableFromBottom = null;
+      }
+      else if (identical(other, collidableFromTop)) {
+        collidableFromTop = null;
+      }
+    }
+    super.onCollisionEnd(other);
   }
 
   void _loadAllAnimations() {
@@ -172,92 +250,20 @@ class Player extends SpriteAnimationGroupComponent
   void _updatePlayerState() {
     PlayerState playerState = PlayerState.idle;
 
-    if (velocity.x < 0 && scale.x > 0) {
-      flipHorizontallyAroundCenter();
-    } else if (velocity.x > 0 && scale.x < 0) {
+    if ((velocity.x < 0 && scale.x > 0) || (velocity.x > 0 && scale.x < 0)) {
       flipHorizontallyAroundCenter();
     }
 
     // Check if moving, set running
-    if (velocity.x > 0 || velocity.x < 0) playerState = PlayerState.running;
+    if (isRunning) playerState = PlayerState.running;
 
     // check if Falling set to falling
-    if (velocity.y > 0) playerState = PlayerState.falling;
+    if (isFalling) playerState = PlayerState.falling;
 
     // Checks if jumping, set to jumping
-    if (velocity.y < 0) playerState = PlayerState.jumping;
+    if (isJumping) playerState = PlayerState.jumping;
 
     current = playerState;
-  }
-
-  void _updatePlayerMovement(double dt) {
-    if (hasJumped && isOnGround) _playerJump(dt);
-
-    // if (velocity.y > _gravity) isOnGround = false; // optional
-
-    velocity.x = horizontalMovement * moveSpeed;
-    position.x += velocity.x * dt;
-  }
-
-  void _playerJump(double dt) {
-    if (game.playSounds) FlameAudio.play('jump.wav', volume: game.soundVolume);
-    velocity.y = -_jumpForce;
-    position.y += velocity.y * dt;
-    isOnGround = false;
-    hasJumped = false;
-  }
-
-  void _checkHorizontalCollisions() {
-    for (final block in collisionBlocks) {
-      if (!block.isPlatform) {
-        if (checkCollision(this, block)) {
-          if (velocity.x > 0) {
-            velocity.x = 0;
-            position.x = block.x - hitbox.offsetX - hitbox.width;
-            break;
-          }
-          if (velocity.x < 0) {
-            velocity.x = 0;
-            position.x = block.x + block.width + hitbox.width + hitbox.offsetX;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  void _applyGravity(double dt) {
-    velocity.y += _gravity;
-    velocity.y = velocity.y.clamp(-_jumpForce, _terminalVelocity);
-    position.y += velocity.y * dt;
-  }
-
-  void _checkVerticalCollisions() {
-    for (final block in collisionBlocks) {
-      if (block.isPlatform) {
-        if (checkCollision(this, block)) {
-          if (velocity.y > 0) {
-            velocity.y = 0;
-            position.y = block.y - hitbox.height - hitbox.offsetY;
-            isOnGround = true;
-            break;
-          }
-        }
-      } else {
-        if (checkCollision(this, block)) {
-          if (velocity.y > 0) {
-            velocity.y = 0;
-            position.y = block.y - hitbox.height - hitbox.offsetY;
-            isOnGround = true;
-            break;
-          }
-          if (velocity.y < 0) {
-            velocity.y = 0;
-            position.y = block.y + block.height - hitbox.offsetY;
-          }
-        }
-      }
-    }
   }
 
   void _respawn() async {
@@ -276,7 +282,7 @@ class Player extends SpriteAnimationGroupComponent
     await animationTicker?.completed;
     animationTicker?.reset();
 
-    velocity = Vector2.zero();
+    resetVelocity();
     position = startingPosition;
     _updatePlayerState();
     Future.delayed(canMoveDuration, () => gotHit = false);
@@ -300,12 +306,28 @@ class Player extends SpriteAnimationGroupComponent
 
     reachedCheckpoint = false;
     position = Vector2.all(-640);
-
-    const waitToChangeDuration = Duration(seconds: 3);
-    Future.delayed(waitToChangeDuration, () => game.loadNextLevel());
   }
 
   void collidedwithEnemy() {
     _respawn();
+  }
+
+  CollisionDirection detectCollisionDirection(PositionComponent other, Vector2 point) {
+    var horizontalVector = Vector2(game.size.x, 0);
+    var collisionVector = Vector2(point.x - center.x, center.y - point.y);
+    var angle = horizontalVector.angleTo(collisionVector);
+    double realAngle = (angle * pi) - pi;
+    debugPrint('Angle: $angle pi radians, degreses: $realAngle');
+//    debugPrint('Player x: $x, y: $y, x+width: ${x+width}, y+height: ${y+height} point x: ${point.x}, point y: ${point.y}');
+
+    if (angle >= -75 && angle <= 75) {
+      debugPrint('Right col');
+    } else if (angle <= 225 && angle >= 75) {
+      debugPrint('TOp col');
+    } else if (angle >= 225 && angle <= 300) {
+      debugPrint(';eft col');
+    }
+
+    return CollisionDirection.fromBottom;
   }
 }

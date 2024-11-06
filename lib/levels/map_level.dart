@@ -1,22 +1,21 @@
 import 'dart:async';
-
 import 'package:flame/components.dart';
 import 'package:flame_tiled/flame_tiled.dart';
-import 'package:pixel_adventure/components/background_tile.dart';
-import 'package:pixel_adventure/components/checkpoint.dart';
-import 'package:pixel_adventure/components/chicken.dart';
-import 'package:pixel_adventure/components/collision_block.dart';
-import 'package:pixel_adventure/components/fruit.dart';
-import 'package:pixel_adventure/components/player.dart';
-import 'package:pixel_adventure/components/saw.dart';
-import 'package:pixel_adventure/pixel_adventure.dart';
+import 'package:pixel_adventure/levels/background/background_tile.dart';
+import 'package:pixel_adventure/collectables/checkpoint.dart';
+import 'package:pixel_adventure/characters/chicken.dart';
+import 'package:pixel_adventure/collectables/fruit.dart';
+import 'package:pixel_adventure/levels/level.dart';
+import 'package:pixel_adventure/obstacles/saw.dart';
+import 'package:pixel_adventure/main.dart';
+import 'package:pixel_adventure/utils/collision_block.dart';
 
-class Level extends World with HasGameRef<PixelAdventure> {
+class MapLevel extends Level {
   final String levelName;
-  final Player player;
-  Level({required this.levelName, required this.player});
+
+  MapLevel({required this.levelName});
+
   late TiledComponent level;
-  List<CollisionBlock> collisionBlocks = [];
 
   @override
   FutureOr<void> onLoad() async {
@@ -27,6 +26,7 @@ class Level extends World with HasGameRef<PixelAdventure> {
     _scrollingBackground();
     _spawningObjects();
     _addCollisions();
+    _addCamera();
 
     return super.onLoad();
   }
@@ -52,9 +52,9 @@ class Level extends World with HasGameRef<PixelAdventure> {
       for (final spawnPoint in spawnPointsLayer.objects) {
         switch (spawnPoint.class_) {
           case 'Player':
-            player.position = Vector2(spawnPoint.x, spawnPoint.y);
-            player.scale.x = 1;
-            add(player);
+            game.player.position = Vector2(spawnPoint.x, spawnPoint.y);
+            game.player.scale.x = 1;
+            add(game.player);
             break;
           case 'Fruit':
             final fruit = Fruit(
@@ -113,7 +113,6 @@ class Level extends World with HasGameRef<PixelAdventure> {
               size: Vector2(collision.width, collision.height),
               isPlatform: true,
             );
-            collisionBlocks.add(platform);
             add(platform);
             break;
           default:
@@ -121,11 +120,19 @@ class Level extends World with HasGameRef<PixelAdventure> {
               position: Vector2(collision.x, collision.y),
               size: Vector2(collision.width, collision.height),
             );
-            collisionBlocks.add(block);
             add(block);
         }
       }
     }
-    player.collisionBlocks = collisionBlocks;
+  }
+
+  void _addCamera() {
+    cam = CameraComponent.withFixedResolution(
+      world: this,
+      width: 640,
+      height: 360,
+    );
+    game.add(cam);
+    cam.follow(game.player);
   }
 }
